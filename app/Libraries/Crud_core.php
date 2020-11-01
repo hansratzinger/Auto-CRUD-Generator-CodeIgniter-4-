@@ -285,7 +285,7 @@ class Crud_core
                 }
 
                 foreach ($toHash as $hashIt) {
-                    $post[$hashIt] = password_hash($hashIt, PASSWORD_DEFAULT);
+                    $post[$hashIt] = password_hash($post[$hashIt], PASSWORD_DEFAULT);
                 }
 
                 //If file fields exist do the uplaod
