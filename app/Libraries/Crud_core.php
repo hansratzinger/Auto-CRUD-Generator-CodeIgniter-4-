@@ -395,10 +395,14 @@ class Crud_core
                     }
                 }
 
-                if ($insertedFilesAffectedRows || $affected || $toDelete || $toInsert)
+                if (($insertedFilesAffectedRows) 
+                    || (isset($affected) && $affected) 
+                    || (isset($toDelete) && $toDelete) 
+                    || (isset($toInsert) && $toInsert)) {
                     $this->flash('success', 'Successfully Updated');
-                else
+                }else{
                     $this->flash('warning', 'The record was not updated or no changes were made');
+                }
 
                 return ['redirect' => $this->base . '/' . $this->table . '/edit/' . $this->id];
             } else {
