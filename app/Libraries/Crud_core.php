@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Libraries;
 
 use App\Models\CrudModel;
@@ -16,18 +15,18 @@ class Crud_core
         $form_title_update, //string
         $form_submit, //string
         $form_submit_update, //string
-        $fields = [], //array of field options: (type, required, label),
+        $fields = [], //array of field options: (type, required, label),        
         $id,  //primary key value
         $id_field,  //primary key field
         $current_values, //will get current form values before updating
         $db, //db connection instance
         $model, //db connection instance
-        $request,
+        $request,        
         $files = [], //when current_values() is executed all fields that have type 'file' or 'files' will be stored here
-        $multipart = false,
+        $multipart = false,        
         $validator = false;
-
-    function __construct($params, RequestInterface $request)
+        
+        function __construct($params, RequestInterface $request)
     {
         $this->request = $request;
         $this->table = $table = $params['table'];
@@ -35,9 +34,6 @@ class Crud_core
         $this->model = new CrudModel($this->db);
 
         $this->schema = $this->schema($table);
-
-
-
         $this->table_title = (isset($params['table_title']) ? $params['table_title'] : 'All items');
         $this->form_submit = (isset($params['form_submit']) ? $params['form_submit'] : 'Submit');
         $this->form_title_update = (isset($params['form_title_update']) ? $params['form_title_update'] : 'Update Item');
@@ -51,10 +47,10 @@ class Crud_core
                 //Adding custom fields to schema for relational table
                 if (isset($field['relation']) && isset($field['relation']['save_table'])) {
                     $newSchema = [
-                        'Field' => $key,
-                        'Type' => 'text',
-                        'Key' => '',
-                        'Default' => '',
+                        'Field' => $key,                        
+                        'Type' => 'text',                        
+                        'Key' => '',                        
+                        'Default' => '',                        
                         'Extra' => 'other_table'
                     ];
                     $this->schema[] = (object) $newSchema;
@@ -64,9 +60,9 @@ class Crud_core
                 if (isset($field['files_relation']) && isset($field['files_relation']['files_table'])) {
                     $newSchema = [
                         'Field' => $key,
-                        'Type' => 'text',
-                        'Key' => '',
-                        'Default' => '',
+                        'Type' => 'text',                        
+                        'Key' => '',                        
+                        'Default' => '',                        
                         'Extra' => 'file_table'
                     ];
                     $this->schema[] = (object) $newSchema;
@@ -99,6 +95,7 @@ class Crud_core
         $this->id_field = $this->get_primary_key_field_name();
 
         $this->current_values = $item = $this->model->getItem($this->table, [$this->id_field => $id]);
+        //function getItem($table,$where)
         if (!$item) {
             $this->flash('warning', 'The record does not exist');
             return false;
@@ -119,8 +116,6 @@ class Crud_core
             }
         }
 
-
-
         $this->id = $id;
         $this->action = 'edit';
         return $item;
@@ -128,10 +123,7 @@ class Crud_core
 
     function view($page_number, $per_page, $columns = null, $where = null, $order = null)
     {
-
-        //$root_url = $this->base . '/' . $this->table;
-
-        $total_rows = $this->model->countTotalRows($this->table, $where, $this->request, $this->schema, $this->fields);
+        $total_rows = $this->model->countTotalRows($this->table, $where, $this->request, $this->schema,  $this->fields);
         $offset = $per_page * ($page_number - 1);
 
         //Start of actual results query
@@ -140,7 +132,7 @@ class Crud_core
         //Pagination
         $pager = service('pager');
         $pagination = $pager->makeLinks($page_number, $per_page, $total_rows, 'pagination');
-
+        
         return $this->items_table($columns, $items, $pagination);
     }
 
@@ -149,7 +141,7 @@ class Crud_core
 
         $form = '';
         $post = $this->request->getPost();
-
+        
         if (isset($post['form'])) {
 
             //This $_POST['form'] is just to check if the $_POST values are from
@@ -161,11 +153,6 @@ class Crud_core
 
             if ($_FILES && isset($_FILES['files']))
                 unset($_FILES['files']);
-
-            // echo '<pre>';
-            // print_r($_FILES);
-            // echo '<pre>';
-            // exit;
 
             $file_fields = [];
             foreach ($_FILES as $file_field_name => $file_field_value) {
@@ -181,6 +168,7 @@ class Crud_core
             $toHash = [];
             $otherTables = [];
             $otherTableValues = [];
+            $fileRulesArr = [];
 
             foreach ($this->fields as $field => $params) {
                 if (($this->action == 'add' && !isset($params['only_edit']) && @$params['only_edit'] !== TRUE) ||
@@ -218,10 +206,86 @@ class Crud_core
 
                         $this->validator->setRule($field, $theLabel, 'required');
                     }
+                   
+                        if (isset($params['max_length']))
+                                $fileRulesArr[] = 'max_length[' . $params['max_length'] . ']';
+                            
+                        if (isset($params['min_length']))
+                                $fileRulesArr[] = 'min_length[' . $params['min_length'] . ']';
+                             
+                        if (isset($params['alpha_space']) && $params['alpha_space'] == true)
+                                $fileRulesArr[] = 'alpha_space';
+                            
+                        if (isset($params['decimal']) && $params['decimal'] == true)
+                                $fileRulesArr[] = 'decimal';
+
+                        if (isset($params['numeric']) && $params['numeric'] == true)
+                                $fileRulesArr[] = 'numeric';  
+
+                        if (isset($params['required']) && $params['required'] == true)
+                                $fileRulesArr[] = 'required';
+
+                        if (isset($params['required_with']))
+                            $fileRulesArr[] = 'required_with[' . $params['required_with'] . ']';
+                        
+                        if (isset($params['required_without']))
+                            $fileRulesArr[] = 'required_without[' . $params['required_without'] . ']';
+
+                        if (isset($params['regex_match']))
+                            $fileRulesArr[] = 'regex_match[' . $params['regex_match'] . ']';
+                        
+                        if (isset($params['valid_phone']))
+                            $fileRulesArr[] = 'regex_match[^(\+|\d)[0-9]{7,16}$]';
+
+                        if (isset($params['permit_empty']) && $params['permit_empty'] == true)
+                                $fileRulesArr[] = 'permit_empty'; 
+                                
+                        if (isset($params['valid_date']) && $params['valid_date'] == true)
+                                $fileRulesArr[] = 'valid_date';
+
+                        if (isset($params['valid_url']) && $params['valid_url'] == true)
+                                $fileRulesArr[] = 'valid_url';
+
+                        if (isset($params['valid_ip']) && $params['valid_ip'] == true)
+                                $fileRulesArr[] = 'valid_ip';  
+
+                        if (isset($params['valid_email']) && $params['valid_email'] == true)
+                                $fileRulesArr[] = 'valid_email';
+                            
+                        if (isset($params['alpha_numeric_space']) && $params['alpha_numeric_space'] == true)
+                                $fileRulesArr[] = 'alpha_numeric_space';
+
+                        if (isset($params['permit_empty']) && $params['permit_empty'] == true)
+                                $fileRulesArr[] = 'permit_empty';                        
+                        
+                        if (isset($params['greater_than']))
+                                $fileRulesArr[] = 'greater_than[' . $params['greater_than'] . ']';
+                                
+                        if (isset($params['greater_than_equal_to']))
+                            $fileRulesArr[] = 'greater_than_equal_to[' . $params['greater_than_equal_to'] . ']';
+
+                        if (isset($params['less_than']))
+                            $fileRulesArr[] = 'less_than[' . $params['less_than'] . ']';
+
+                        if (isset($params['less_than_equal_to']))
+                            $fileRulesArr[] = 'less_than_equal_to[' . $params['less_than_equal_to'] . ']';
+
+                        if (!empty($fileRulesArr)){
+                            $fileRules = implode('|', $fileRulesArr);                            
+                            $this->validator->setRule($field, $theLabel, $fileRules);
+                            
+                            // if ($field == '')   // insert field for debugging 
+                            //     dd($theLabel,$field,$fileRulesArr,isset($fileRules),$params,$unsets);
+                            
+                            $fileRulesArr = [];
+                        }
 
 
-                    if (isset($params['unique']) && isset($params['unique'][0]) && isset($params['unique'][1]) && $params['unique'][0] === TRUE) {
-                        $unique_field = $params['unique'][1];
+                            
+                    
+                        if (isset($params['unique']) && isset($params['unique'][0]) && isset($params['unique'][1]) && $params['unique'][0] === TRUE) {
+                            $unique_field = $params['unique'][1];
+
                         if (!isset($this->current_values) || $this->current_values->{$unique_field} != $post[$unique_field]) {
                             $novalidation = false;
                             $this->validator->setRule($field, $theLabel, 'is_unique[' . $this->table . '.' . $unique_field . ']');
@@ -308,7 +372,7 @@ class Crud_core
                     if (!$this->current_values) {
                         $this->id = $this->model->insertItem($this->table, $post);
                         if ($this->id) {
-                            $this->flash('success', 'Successfully Added');
+                            $this->flash('success', 'Successfully Added (310)');
                         }
                     }
                 } elseif ($this->action == 'edit') {
@@ -372,12 +436,15 @@ class Crud_core
                                 $this->model->batchInsert($otherTable, $newTempRelationData);
                             }
                         }
-
-                        if (!$filesData) {
-                            if ($toDelete || $toInsert || $affected)
-                                $this->flash('success', 'Successfully Updated');
-                            else
-                                $this->flash('warning', 'The record was not updated or no changes were made');
+                        
+                        if (($filesData) 
+                            || (isset($affected) && $affected) 
+                            || (isset($toDelete) && $toDelete) 
+                            || (isset($toInsert) && $toInsert)) {
+                            $this->flash('success', 'Successfully Updated (381)');
+                        }else{
+                            //dd($filesData, affected, toDelete,toInsert);
+                            $this->flash('warning', 'The record was not updated or no changes were made (383)');
                         }
                     }
                     // $otherTableValues = [
@@ -395,14 +462,14 @@ class Crud_core
                     }
                 }
 
-                if (($insertedFilesAffectedRows) 
-                    || (isset($affected) && $affected) 
-                    || (isset($toDelete) && $toDelete) 
-                    || (isset($toInsert) && $toInsert)) {
-                    $this->flash('success', 'Successfully Updated');
-                }else{
-                    $this->flash('warning', 'The record was not updated or no changes were made');
-                }
+                // if (($insertedFilesAffectedRows) 
+                //     || (isset($affected) && $affected) 
+                //     || (isset($toDelete) && $toDelete) 
+                //     || (isset($toInsert) && $toInsert)) {
+                //     $this->flash('success', 'Successfully Updated (401)');
+                // }else{
+                //     $this->flash('warning', 'The record was not updated or no changes were made (403)');
+                // }
 
                 return ['redirect' => $this->base . '/' . $this->table . '/edit/' . $this->id];
             } else {
@@ -414,8 +481,17 @@ class Crud_core
 
         $form .= '<div class="card card-primary">
             <div class="card-header">
-              <h3 class="card-title">' . ($this->action == 'add' ? $this->form_title_add : $this->form_title_update) . '</h3>
-              </div>';
+                <h3 class="card-title">';
+    
+                if($this->action == 'add')
+                    $form .= $this->form_title_add;
+                 
+                if($this->action == 'edit')
+                    $form .= $this->form_title_update;
+                
+                $form .= '</h3>
+            </div>';
+            
         if ($this->multipart) {
             $form .= form_open_multipart('/' . $this->base . '/' . $this->table . '/' . ($this->action == 'add' ? 'add' : 'edit/' . $this->id)) . '<div class="card-body">';
         } else {
@@ -507,10 +583,9 @@ class Crud_core
                     });
                     </script>';
         }
-
         return $form;
     }
-
+    
     protected function get_label($field, $default_label = '')
     {
 
@@ -873,20 +948,18 @@ class Crud_core
         $input .= '
     <script>$(document).ready(function() {
       $("#' . $rid . '").summernote({
-        height: 150,
+        height: 150,        
         toolbar: [
-          [\'style\', [\'style\',\'bold\', \'italic\', \'underline\', \'clear\']],
-          [\'font\', [\'strikethrough\']],
-          [\'fontsize\', [\'fontsize\',\'fontname\']],
-          [\'color\', [\'color\']],
-          [\'para\', [\'ul\', \'ol\', \'paragraph\']],
-          [\'insert\', [ \'video\']],
-          [\'misc\', [ \'codeview\']],
-
-        ],
-        fontSizes: [ "14", "16","18", "20", "22"],
-
-      });
+          [\'style\', [\'style\',\'bold\', \'italic\', \'underline\', \'clear\']],          
+          [\'font\', [\'strikethrough\']],          
+          [\'fontsize\', [\'fontsize\',\'fontname\']],          
+          [\'color\', [\'color\']],          
+          [\'para\', [\'ul\', \'ol\', \'paragraph\']],          
+          [\'insert\', [ \'video\']],         
+           [\'misc\', [ \'codeview\']],        
+        ],        
+        fontSizes: [ "14", "16","18", "20", "22"],      
+    });
     });</script>
     ';
         return $this->input_wrapper($field_type, $label, $input, $required);
@@ -1008,7 +1081,6 @@ class Crud_core
             <div class="card">
               <div class="card-header">
                 <h3 class="card-title">' . $this->table_title . '</h3>
-
                 <div class="card-tools">
                   <a class="btn btn-primary btn-sm" href="' . $this->base . '/' . $this->table . '/add">' . $this->form_title_add . '</a>
                 </div>
@@ -1266,7 +1338,7 @@ class Crud_core
                     $file->move(rtrim($fileFieldOptions['path'], '/') . '/' . $this->id);
                     $newFilesData[] = [
                         $fileRelationOptions['parent_field'] => $this->id,
-                        $fileRelationOptions['file_name_field'] => $file->getName(),
+                        $fileRelationOptions['file_name_field'] => $file->getName(),                        
                         $fileRelationOptions['file_type_field'] => $file->getClientMimeType(),
                     ];
                 } else
