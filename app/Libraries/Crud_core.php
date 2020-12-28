@@ -13,6 +13,7 @@ class Crud_core
         $table_title, //string
         $form_title_add, //string
         $form_title_update, //string
+        $form_title_show, //string
         $form_submit, //string
         $form_submit_update, //string
         $fields = [], //array of field options: (type, required, label),        
@@ -37,6 +38,7 @@ class Crud_core
         $this->table_title = (isset($params['table_title']) ? $params['table_title'] : 'All items');
         $this->form_submit = (isset($params['form_submit']) ? $params['form_submit'] : 'Submit');
         $this->form_title_update = (isset($params['form_title_update']) ? $params['form_title_update'] : 'Update Item');
+        $this->form_title_show = (isset($params['form_title_show']) ? $params['form_title_show'] : 'Show Item');
         $this->form_submit_update = (isset($params['form_submit_update']) ? $params['form_submit_update'] : 'Update');
         $this->form_title_add = (isset($params['form_title_add']) ? $params['form_title_add'] : 'Create Item');
         //Field options
@@ -274,7 +276,7 @@ class Crud_core
                             $fileRules = implode('|', $fileRulesArr);                            
                             $this->validator->setRule($field, $theLabel, $fileRules);
                             
-                            // if ($field == '')   // insert field for debugging 
+                            // if ($field == 'est_house_number')   // insert field for debugging 
                             //     dd($theLabel,$field,$fileRulesArr,isset($fileRules),$params,$unsets);
                             
                             $fileRulesArr = [];
@@ -372,7 +374,7 @@ class Crud_core
                     if (!$this->current_values) {
                         $this->id = $this->model->insertItem($this->table, $post);
                         if ($this->id) {
-                            $this->flash('success', 'Successfully Added (310)');
+                            $this->flash('success', 'Successfully Added (377)');
                         }
                     }
                 } elseif ($this->action == 'edit') {
@@ -394,7 +396,7 @@ class Crud_core
                         if ($affected == 1)
                             $this->flash('success', 'Successfully Updated');
                         else
-                            $this->flash('warning', 'The record was not updated or no changes were made');
+                            $this->flash('warning', 'The record was not updated or no changes were made (399)');
                     }
                 }
 
@@ -436,15 +438,15 @@ class Crud_core
                                 $this->model->batchInsert($otherTable, $newTempRelationData);
                             }
                         }
-                        
+                        // dd($_POST, $filesData, isset( $affected), $affected, $toDelete,$toInsert);
                         if (($filesData) 
                             || (isset($affected) && $affected) 
                             || (isset($toDelete) && $toDelete) 
                             || (isset($toInsert) && $toInsert)) {
-                            $this->flash('success', 'Successfully Updated (381)');
+                            $this->flash('success', 'Successfully Updated (446)');
                         }else{
-                            //dd($filesData, affected, toDelete,toInsert);
-                            $this->flash('warning', 'The record was not updated or no changes were made (383)');
+                            
+                            $this->flash('warning', 'The record was not updated or no changes were made (449)');
                         }
                     }
                     // $otherTableValues = [
@@ -468,7 +470,7 @@ class Crud_core
                 //     || (isset($toInsert) && $toInsert)) {
                 //     $this->flash('success', 'Successfully Updated (401)');
                 // }else{
-                //     $this->flash('warning', 'The record was not updated or no changes were made (403)');
+                //     $this->flash('warning', 'The record was not updated or no changes were made (473)');
                 // }
 
                 return ['redirect' => $this->base . '/' . $this->table . '/edit/' . $this->id];
@@ -488,6 +490,9 @@ class Crud_core
                  
                 if($this->action == 'edit')
                     $form .= $this->form_title_update;
+                 
+                if($this->action == 'show')
+                    $form .= $this->form_title_show;
                 
                 $form .= '</h3>
             </div>';
@@ -906,10 +911,17 @@ class Crud_core
         return $this->input_wrapper($field_type, $label, $input, $required);
     }
 
+    protected function field_datetime_no_edit($field_type, $label, $field_params)
+    {
+        $required = '';
+        $input = ' ' . $this->current_values->{$field_type};
+        
+        return $this->input_wrapper($field_type, $label, $input, $required);
+    }
+
     protected function field_date($field_type, $label, $field_params)
     {
         $required = (isset($field_params['required']) && $field_params['required'] ? ' required ' : '');
-
         $input = '<div class="input-group date" id="' . $field_type . '" data-target-input="nearest">
         <input 
         type="text"  ' . $required . ' 
@@ -1289,6 +1301,11 @@ class Crud_core
     public function getEditTitle()
     {
         return $this->form_title_update;
+    }
+
+    public function getShowTitle()
+    {
+        return $this->form_title_show;
     }
 
     public function getTable()
