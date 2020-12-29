@@ -438,16 +438,16 @@ class Crud_core
                                 $this->model->batchInsert($otherTable, $newTempRelationData);
                             }
                         }
-                        // dd($_POST, $filesData, isset( $affected), $affected, $toDelete,$toInsert);
-                        if (($filesData) 
-                            || (isset($affected) && $affected) 
-                            || (isset($toDelete) && $toDelete) 
-                            || (isset($toInsert) && $toInsert)) {
-                            $this->flash('success', 'Successfully Updated (446)');
-                        }else{
-                            
-                            $this->flash('warning', 'The record was not updated or no changes were made (449)');
+                        if ($filesData) {
+                            if ((isset($affected) && $affected) 
+                                || (isset($toDelete) && $toDelete) 
+                                || (isset($toInsert) && $toInsert)) {
+                            $this->flash('success', 'Successfully Updated (445)');
+                            }else{                                
+                                $this->flash('warning', 'The record was not updated or no changes were made (447)');
+                            } 
                         }
+                           
                     }
                     // $otherTableValues = [
                     //     'parent_field' => $relOptions['save_table_parent_id'],
@@ -468,7 +468,7 @@ class Crud_core
                 //     || (isset($affected) && $affected) 
                 //     || (isset($toDelete) && $toDelete) 
                 //     || (isset($toInsert) && $toInsert)) {
-                //     $this->flash('success', 'Successfully Updated (401)');
+                //     $this->flash('success', 'Successfully Updated (471)');
                 // }else{
                 //     $this->flash('warning', 'The record was not updated or no changes were made (473)');
                 // }
