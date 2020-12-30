@@ -143,7 +143,12 @@ class Crud_core
 
         $form = '';
         $post = $this->request->getPost();
-        
+
+        //fields which are set in controller to 'no_edit' and which have a unique no_edit_method are listed below
+        $no_edit_types = [
+            'dropdown',
+        ];
+
         if (isset($post['form'])) {
 
             //This $_POST['form'] is just to check if the $_POST values are from
@@ -374,7 +379,7 @@ class Crud_core
                     if (!$this->current_values) {
                         $this->id = $this->model->insertItem($this->table, $post);
                         if ($this->id) {
-                            $this->flash('success', 'Successfully Added (377)');
+                            $this->flash('success', 'Successfully Added');
                         }
                     }
                 } elseif ($this->action == 'edit') {
@@ -396,7 +401,7 @@ class Crud_core
                         if ($affected == 1)
                             $this->flash('success', 'Successfully Updated');
                         else
-                            $this->flash('warning', 'The record was not updated or no changes were made (399)');
+                            $this->flash('warning', 'The record was not updated or no changes were made');
                     }
                 }
 
@@ -442,9 +447,9 @@ class Crud_core
                             if ((isset($affected) && $affected) 
                                 || (isset($toDelete) && $toDelete) 
                                 || (isset($toInsert) && $toInsert)) {
-                            $this->flash('success', 'Successfully Updated (445)');
+                            $this->flash('success', 'Successfully Updated');
                             }else{                                
-                                $this->flash('warning', 'The record was not updated or no changes were made (447)');
+                                $this->flash('warning', 'The record was not updated or no changes were made');
                             } 
                         }
                            
@@ -470,7 +475,7 @@ class Crud_core
                 //     || (isset($toInsert) && $toInsert)) {
                 //     $this->flash('success', 'Successfully Updated (471)');
                 // }else{
-                //     $this->flash('warning', 'The record was not updated or no changes were made (473)');
+                //     $this->flash('warning', 'The record was not updated or no changes were made');
                 // }
 
                 return ['redirect' => $this->base . '/' . $this->table . '/edit/' . $this->id];
@@ -507,6 +512,7 @@ class Crud_core
         $fields = $this->fields;
         foreach ($this->schema as $field) {
 
+            $no_edit = false;
             $f = $field;
             if ($f->Extra == 'auto_increment') {
                 continue;
@@ -522,6 +528,10 @@ class Crud_core
 
             if (isset($fields[$f->Field]['type']) && $fields[$f->Field]['type'] == 'unset') {
                 continue;
+            }
+
+            if (isset($fields[$f->Field]['no_edit']) && $fields[$f->Field]['no_edit'] && $this->action == 'edit') {
+                $no_edit = true;
             }
 
             $label = $this->get_label($field);
@@ -545,10 +555,16 @@ class Crud_core
             }
 
             $field_values = $fields[$f->Field]['values'] ?? null;
-
+            
             $field_method = 'field_' . $field_type;
 
-
+            if($no_edit == true){
+                if (in_array($field_type, $no_edit_types)){
+                    $field_method .= '_no_edit';
+                }else{
+                    $field_method = 'field_no_edit';
+                }
+            } 
 
             //Checking if helper text is set for this field
             $helperText = '';
@@ -649,10 +665,18 @@ class Crud_core
         return $output;
     }
 
-    protected function field_text($field_type, $label, $field_params)
+    protected function field_no_edit($field_type, $label, $field_params)
     {
+        $required = '';
+        $input = '<br />' . $this->current_values->{$field_type};
+        return $this->input_wrapper($field_type, $label, $input, $required);
+    }
+
+    protected function field_text($field_type, $label, $field_params)
+    {   
         $required = (isset($field_params['required']) && $field_params['required'] ? ' required ' : '');
         $input = '<input type="text" ' . $required . ' class="form-control" id="' . $field_type . '" name="' . $field_type . '"  placeholder="" value="' . set_value($field_type, (isset($this->current_values->{$field_type}) ? $this->current_values->{$field_type} : '')) . '" autocomplete="off">';
+        
         return $this->input_wrapper($field_type, $label, $input, $required);
     }
 
@@ -722,6 +746,30 @@ class Crud_core
         $input .= '</select><script>$(document).ready(function() {
     $("#' . $rid . '").select2({theme: "bootstrap4",width:"100%"});
 });</script>';
+        return $this->input_wrapper($field_type, $label, $input, $required);
+    }
+    protected function field_dropdown_no_edit($field_type, $label, $field_params, $values)
+    {
+        $required = '';
+        // //randomize_id for select2
+        // $rand_number = mt_rand(1545645, 15456546);
+        // $rid = $field_type . '_' . $rand_number;
+        // $input = '<select  class="form-control" ' . $required . ' id="' . $rid . '" name="' . $field_type . '"><option></option>';
+        $pk = $field_params['relation']['primary_key'];
+        $display = $field_params['relation']['display'];
+        foreach ($values as $value) {
+            if (is_array($display)) {
+                $display_val = '';
+                foreach ($display as $disp) {
+                    $display_val .= $value->{$disp} . ' ';
+                }
+                $display_val = trim($display_val);
+            } else {
+                $display_val = $value->{$display};
+            }
+            $input = '<br />' . set_select($field_type, $value->{$pk}, (isset($this->current_values->{$field_type}) && $this->current_values->{$field_type} == $value->{$pk} ? TRUE : FALSE)) . ' ' . $display_val;
+        }
+
         return $this->input_wrapper($field_type, $label, $input, $required);
     }
 
@@ -871,10 +919,18 @@ class Crud_core
     }
 
     protected function field_email($field_type, $label, $field_params)
-    {
-        $required = (isset($field_params['required']) && $field_params['required'] ? ' required ' : '');
-        $input = '<input type="email" ' . $required . ' class="form-control" id="' . $field_type . '" name="' . $field_type . '"  placeholder="" value="' . set_value($field_type, (isset($this->current_values->{$field_type}) ? $this->current_values->{$field_type} : '')) . '" autocomplete="off">';
-        return $this->input_wrapper($field_type, $label, $input, $required);
+    {   
+        if($this->action != 'edit') {
+            $form .= $this->form_title_update;
+            $required = (isset($field_params['required']) && $field_params['required'] ? ' required ' : '');
+            $input = '<input type="email" ' . $required . ' class="form-control" id="' . $field_type . '" name="' . $field_type . '"  placeholder="" value="' . set_value($field_type, (isset($this->current_values->{$field_type}) ? $this->current_values->{$field_type} : '')) . '" autocomplete="off">';
+            
+        }else{
+            $required = '';
+            $input = ' ' . $this->current_values->{$field_type};
+        }
+        return $this->input_wrapper($field_type, $label, $input, $required)
+;
     }
 
     protected function field_hidden($field_type, $label, $field_params)
@@ -908,14 +964,6 @@ class Crud_core
         </script>';
 
         //$input = '<input type="datetime-local" '.$required.' class="form-control" id="'.$field_type.'" name="'.$field_type.'"  placeholder="" value="'.set_value($field_type, (isset($this->current_values->{$field_type}) ? $this->current_values->{$field_type} : '')).'" autocomplete="off">';
-        return $this->input_wrapper($field_type, $label, $input, $required);
-    }
-
-    protected function field_datetime_no_edit($field_type, $label, $field_params)
-    {
-        $required = '';
-        $input = ' ' . $this->current_values->{$field_type};
-        
         return $this->input_wrapper($field_type, $label, $input, $required);
     }
 
